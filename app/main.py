@@ -1,22 +1,35 @@
+import os
 from fastapi import FastAPI
-from app.database import engine, Base
-import app.models as models
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from app.database import Base, engine
 from app.routers import riders, orders, dispatch
 
-# Automatically create database tables
+# Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Delivery Optimization Platform",
-    description="Intelligent Last-Mile Delivery & Route Optimization API",
-    version="0.1.0"
+    title="Delivery Optimization Platform API",
+    description="Intelligent last-mile delivery optimization platform with route planning and dispatching.",
+    version="1.0.0",
 )
 
-# Register routers
+# Include API routers without duplicate prefixes
 app.include_router(riders.router)
 app.include_router(orders.router)
 app.include_router(dispatch.router)
 
-@app.get("/", tags=["Health"])
+# Serve frontend dashboard static files
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/", include_in_schema=False)
+def serve_dashboard():
+    dashboard_path = os.path.join("static", "index.html")
+    if os.path.exists(dashboard_path):
+        return FileResponse(dashboard_path)
+    return {"message": "Delivery Optimization Platform API is active. Visit /docs for Swagger UI."}
+
+@app.get("/health", tags=["System"])
 def health_check():
-    return {"status": "online", "message": "Delivery engine backend is running"}
+    return {"status": "healthy"}
